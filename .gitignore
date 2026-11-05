@@ -1,0 +1,37 @@
+# ==============================================================================
+# WARUNG POS - GIT IGNORE
+# ==============================================================================
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production build artifacts
+dist/
+dist-ssr/
+
+# Environment files & Secrets
+.env
+.env.local
+.env.*.local
+
+# SQLite local database & WAL files
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+database/*.db
+database/*.db-wal
+database/*.db-shm
+database/*.db-journal
+
+# Uploaded images (keep folder structure with .gitkeep)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# System & Editor files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
