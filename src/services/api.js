@@ -16,21 +16,55 @@ async function request(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
+  // ── 1. Network-level fetch ──────────────────────────────────────────────
+  let res;
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || `Request failed with status ${res.status}`);
-    }
-    return data;
-  } catch (error) {
-    console.error(`[API Error: ${endpoint}]`, error);
-    throw error;
+    res = await fetch(url, { ...options, headers });
+  } catch (networkErr) {
+    // Server tidak berjalan, koneksi ditolak, dsb.
+    console.error(`[API NetworkError: ${endpoint}]`, networkErr);
+    throw new Error(
+      'Server backend tidak dapat dijangkau. ' +
+      'Pastikan server sudah dijalankan dengan perintah: npm run dev:all'
+    );
   }
+
+  // ── 2. Parsing JSON secara aman ─────────────────────────────────────────
+  let data;
+  const contentType = res.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error(`[API ParseError: ${endpoint}]`, parseErr);
+      throw new Error(
+        'Server mengembalikan respons yang tidak valid. Silakan coba lagi.'
+      );
+    }
+  } else {
+    // Respons bukan JSON (halaman HTML error dari Vite proxy, dsb.)
+    if (!res.ok) {
+      console.error(`[API NonJSON ${res.status}: ${endpoint}]`);
+      throw new Error(
+        `Terjadi kesalahan pada server (${res.status} ${res.statusText}). ` +
+        'Pastikan server backend sudah berjalan.'
+      );
+    }
+    // Respons sukses tanpa body JSON (misal 204 No Content)
+    data = { success: true };
+  }
+
+  // ── 3. Periksa status HTTP ──────────────────────────────────────────────
+  if (!res.ok) {
+    const message =
+      (data && data.message) ||
+      `Permintaan gagal dengan status ${res.status}`;
+    console.error(`[API ${res.status}: ${endpoint}]`, message);
+    throw new Error(message);
+  }
+
+  return data;
 }
 
 export const api = {
