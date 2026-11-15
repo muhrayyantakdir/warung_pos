@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Save, AlertCircle } from 'lucide-react';
 import { formatRupiah } from '../../utils/format';
 
 export default function ProductModal({
@@ -13,8 +13,6 @@ export default function ProductModal({
 
   const [formData, setFormData] = useState({
     name: '',
-    sku: '',
-    barcode: '',
     category_id: '',
     cost_price: '',
     selling_price: '',
@@ -30,8 +28,6 @@ export default function ProductModal({
     if (product) {
       setFormData({
         name: product.name || '',
-        sku: product.sku || '',
-        barcode: product.barcode || '',
         category_id: product.category_id ? String(product.category_id) : '',
         cost_price: product.cost_price !== undefined ? String(product.cost_price) : '',
         selling_price: product.selling_price !== undefined ? String(product.selling_price) : '',
@@ -42,8 +38,6 @@ export default function ProductModal({
     } else {
       setFormData({
         name: '',
-        sku: generateSampleSku(),
-        barcode: '',
         category_id: categories.length > 0 ? String(categories[0].id) : '',
         cost_price: '',
         selling_price: '',
@@ -55,15 +49,9 @@ export default function ProductModal({
     setErrors({});
   }, [product, categories, isOpen]);
 
-  function generateSampleSku() {
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    return `WRG-${randomNum}`;
-  }
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error for field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
@@ -73,9 +61,6 @@ export default function ProductModal({
     const errs = {};
     if (!formData.name.trim()) {
       errs.name = 'Nama produk wajib diisi';
-    }
-    if (!formData.sku.trim()) {
-      errs.sku = 'SKU / Kode barang wajib diisi';
     }
 
     const cost = Number(formData.cost_price);
@@ -133,13 +118,13 @@ export default function ProductModal({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '640px' }}>
+      <div className="modal-content" style={{ maxWidth: '540px' }}>
         {/* Modal Header */}
         <div className="modal-header">
           <div>
             <h3>{isEdit ? 'Ubah Data Produk' : 'Tambah Produk Baru'}</h3>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Lengkapi informasi produk, harga modal, harga jual, dan stok
+              {isEdit ? 'Perbarui informasi produk dan harga' : 'Masukkan nama, harga jual, dan stok barang'}
             </p>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
@@ -164,52 +149,12 @@ export default function ProductModal({
                 type="text"
                 name="name"
                 className={`form-input ${errors.name ? 'error' : ''}`}
-                placeholder="Contoh: Kopi Kapal Api 65g"
+                placeholder="Contoh: Beras Pandan Wangi 5kg"
                 value={formData.name}
                 onChange={handleChange}
                 autoFocus
               />
               {errors.name && <div className="form-error-text">{errors.name}</div>}
-            </div>
-
-            {/* Row: SKU & Barcode */}
-            <div className="form-row">
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className="form-label">SKU / Kode Produk *</label>
-                  {!isEdit && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData(p => ({ ...p, sku: generateSampleSku() }))}
-                      style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                    >
-                      <Sparkles size={12} />
-                      <span>Buat Kode</span>
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  name="sku"
-                  className={`form-input ${errors.sku ? 'error' : ''}`}
-                  placeholder="KODE-001"
-                  value={formData.sku}
-                  onChange={handleChange}
-                />
-                {errors.sku && <div className="form-error-text">{errors.sku}</div>}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Barcode Scanner (Opsional)</label>
-                <input
-                  type="text"
-                  name="barcode"
-                  className="form-input"
-                  placeholder="Scan barcode di sini..."
-                  value={formData.barcode}
-                  onChange={handleChange}
-                />
-              </div>
             </div>
 
             {/* Row: Kategori & Satuan */}
@@ -237,7 +182,7 @@ export default function ProductModal({
                   type="text"
                   name="unit"
                   className={`form-input ${errors.unit ? 'error' : ''}`}
-                  placeholder="pcs, bks, kg, botol, sachet"
+                  placeholder="pcs, kg, bks, karung, botol"
                   value={formData.unit}
                   onChange={handleChange}
                 />
@@ -255,7 +200,7 @@ export default function ProductModal({
                   min="0"
                   step="100"
                   className={`form-input ${errors.cost_price ? 'error' : ''}`}
-                  placeholder="Contoh: 3000"
+                  placeholder="Contoh: 65000"
                   value={formData.cost_price}
                   onChange={handleChange}
                 />
@@ -270,7 +215,7 @@ export default function ProductModal({
                   min="0"
                   step="100"
                   className={`form-input ${errors.selling_price ? 'error' : ''}`}
-                  placeholder="Contoh: 3500"
+                  placeholder="Contoh: 72000"
                   value={formData.selling_price}
                   onChange={handleChange}
                 />
@@ -328,7 +273,7 @@ export default function ProductModal({
                   onChange={handleChange}
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Sistem memberi tanda saat stok &le; angka ini
+                  Pemberitahuan bila sisa stok &le; angka ini
                 </span>
               </div>
             </div>

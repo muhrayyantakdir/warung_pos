@@ -136,8 +136,7 @@ export const createProduct = async (req, res) => {
     // Validasi
     if (!name || !name.trim())
       return res.status(400).json({ success: false, message: 'Nama produk wajib diisi' });
-    if (!sku || !sku.trim())
-      return res.status(400).json({ success: false, message: 'SKU/Kode produk wajib diisi' });
+
     if (cost_price === undefined || isNaN(cost_price) || Number(cost_price) < 0)
       return res.status(400).json({ success: false, message: 'Harga modal harus berupa angka valid (>= 0)' });
     if (selling_price === undefined || isNaN(selling_price) || Number(selling_price) < 0)
@@ -147,7 +146,10 @@ export const createProduct = async (req, res) => {
     if (stock === undefined || isNaN(stock) || Number(stock) < 0)
       return res.status(400).json({ success: false, message: 'Jumlah stok harus berupa bilangan valid (>= 0)' });
 
-    const cleanSku = sku.trim().toUpperCase();
+    // Jika SKU tidak diisi dari form (disederhanakan), buat otomatis secara unik
+    const cleanSku = (sku && sku.trim())
+      ? sku.trim().toUpperCase()
+      : `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
     const cleanName = name.trim();
     const initialStock = Math.floor(Number(stock));
 
@@ -288,18 +290,18 @@ export const updateProduct = async (req, res) => {
 
       if (name !== undefined && !name.trim())
         return res.status(400).json({ success: false, message: 'Nama produk tidak boleh kosong' });
-      if (sku !== undefined && !sku.trim())
-        return res.status(400).json({ success: false, message: 'SKU tidak boleh kosong' });
 
-      if (sku && sku.trim().toUpperCase() !== existing.sku) {
+      const targetSku = (sku && sku.trim()) ? sku.trim().toUpperCase() : existing.sku;
+
+      if (targetSku !== existing.sku) {
         const { data: duplicateSku } = await supabase
           .from('products')
           .select('id')
-          .eq('sku', sku.trim().toUpperCase())
+          .eq('sku', targetSku)
           .neq('id', id)
           .maybeSingle();
         if (duplicateSku) {
-          return res.status(400).json({ success: false, message: `SKU '${sku}' sudah digunakan oleh produk lain` });
+          return res.status(400).json({ success: false, message: `SKU '${targetSku}' sudah digunakan oleh produk lain` });
         }
       }
 
@@ -324,7 +326,7 @@ export const updateProduct = async (req, res) => {
 
       const updates = {
         name: name !== undefined ? name.trim() : existing.name,
-        sku: sku !== undefined ? sku.trim().toUpperCase() : existing.sku,
+        sku: targetSku,
         barcode: barcode !== undefined ? (barcode ? barcode.trim() : null) : existing.barcode,
         category_id: validCategoryId,
         cost_price: newCost,
@@ -371,13 +373,13 @@ export const updateProduct = async (req, res) => {
 
     if (name !== undefined && !name.trim())
       return res.status(400).json({ success: false, message: 'Nama produk tidak boleh kosong' });
-    if (sku !== undefined && !sku.trim())
-      return res.status(400).json({ success: false, message: 'SKU tidak boleh kosong' });
 
-    if (sku && sku.trim().toUpperCase() !== existing.sku) {
-      const duplicateSku = query.get('SELECT id FROM products WHERE sku = ? AND id != ?', sku.trim().toUpperCase(), Number(id));
+    const targetSku = (sku && sku.trim()) ? sku.trim().toUpperCase() : existing.sku;
+
+    if (targetSku !== existing.sku) {
+      const duplicateSku = query.get('SELECT id FROM products WHERE sku = ? AND id != ?', targetSku, Number(id));
       if (duplicateSku) {
-        return res.status(400).json({ success: false, message: `SKU '${sku}' sudah digunakan oleh produk lain` });
+        return res.status(400).json({ success: false, message: `SKU '${targetSku}' sudah digunakan oleh produk lain` });
       }
     }
 
@@ -416,7 +418,7 @@ export const updateProduct = async (req, res) => {
       WHERE id = ?
     `).run(
       name !== undefined ? name.trim() : existing.name,
-      sku !== undefined ? sku.trim().toUpperCase() : existing.sku,
+      targetSku,
       barcode !== undefined ? (barcode ? barcode.trim() : null) : existing.barcode,
       validCategoryId,
       newCost,
