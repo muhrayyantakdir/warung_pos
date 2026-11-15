@@ -37,6 +37,39 @@ if (isSupabaseConfigured) {
   console.log('[Database] Mode: SQLite Lokal (Supabase belum dikonfigurasi)');
 }
 
+// ─── HELPER: CEK KONEKSI SUPABASE DENGAN TIMEOUT 3s & CACHE ──────────────────
+let _supabaseAlive = null;
+let _supabaseLastCheck = 0;
+
+export async function isSupabaseAlive() {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  const now = Date.now();
+  if (_supabaseAlive !== null && now - _supabaseLastCheck < 60_000) {
+    return _supabaseAlive;
+  }
+
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase check timeout (3s)')), 3000)
+    );
+    const checkPromise = supabase.from('users').select('id').limit(1);
+
+    const { error } = await Promise.race([checkPromise, timeoutPromise]);
+    _supabaseAlive = !error;
+    _supabaseLastCheck = now;
+    if (!_supabaseAlive) {
+      console.warn('[Database] Supabase tidak dapat dijangkau, fallback ke SQLite lokal:', error?.message);
+    }
+    return _supabaseAlive;
+  } catch (err) {
+    _supabaseAlive = false;
+    _supabaseLastCheck = now;
+    console.warn('[Database] Supabase check gagal, fallback ke SQLite lokal:', err?.message);
+    return false;
+  }
+}
+
 // ─── SQLITE SETUP (selalu tersedia sebagai fallback) ─────────────────────────
 const dbDir  = path.resolve(__dirname, '../../database');
 const dbPath = path.join(dbDir, 'warung_pos.db');
@@ -60,4 +93,4 @@ export const query = {
   run: (sql, ...params) => db.prepare(sql).run(...params),
 };
 
-export default { supabase, isSupabaseConfigured, db, query };
+export default { supabase, isSupabaseConfigured, isSupabaseAlive, db, query };

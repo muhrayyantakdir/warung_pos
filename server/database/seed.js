@@ -56,10 +56,28 @@ export function seedInitialData() {
     const sampleProducts = [
       // Sembako
       { name: 'Beras Ramos Super 5kg', sku: 'BRS-001', barcode: '899123456001', cat: 'sembako', cost: 65000, sell: 72000, stock: 15, unit: 'karung', min_stock: 5 },
+      { name: 'Beras Pandan Wangi 5kg', sku: 'BRS-002', barcode: '899123456011', cat: 'sembako', cost: 70000, sell: 78000, stock: 20, unit: 'karung', min_stock: 5 },
+      { name: 'Beras Setra Ramos Cap Topi Koki 5kg', sku: 'BRS-003', barcode: '899123456012', cat: 'sembako', cost: 67000, sell: 74000, stock: 15, unit: 'karung', min_stock: 5 },
       { name: 'Minyak Goreng Bimoli 1L', sku: 'MYK-001', barcode: '899123456002', cat: 'sembako', cost: 17500, sell: 20000, stock: 24, unit: 'pouch', min_stock: 6 },
+      { name: 'Minyak Goreng Filma Pouch 2L', sku: 'MYK-002', barcode: '899123456013', cat: 'sembako', cost: 34000, sell: 38500, stock: 25, unit: 'pouch', min_stock: 6 },
+      { name: 'Minyak Goreng SunCo 1L', sku: 'MYK-003', barcode: '899123456014', cat: 'sembako', cost: 18000, sell: 20500, stock: 30, unit: 'pouch', min_stock: 8 },
+      { name: 'Minyak Goreng Sania 2L', sku: 'MYK-004', barcode: '899123456015', cat: 'sembako', cost: 33000, sell: 37000, stock: 20, unit: 'pouch', min_stock: 5 },
       { name: 'Gula Pasir Gulaku 1kg', sku: 'GLA-001', barcode: '899123456003', cat: 'sembako', cost: 15500, sell: 18000, stock: 20, unit: 'kg', min_stock: 5 },
+      { name: 'Gula Pasir Rose Brand 1kg', sku: 'GLA-002', barcode: '899123456016', cat: 'sembako', cost: 15000, sell: 17500, stock: 35, unit: 'kg', min_stock: 10 },
+      { name: 'Gula Merah Kelapa Super 500g', sku: 'GLA-003', barcode: '899123456017', cat: 'sembako', cost: 11500, sell: 14000, stock: 25, unit: 'bks', min_stock: 5 },
       { name: 'Telur Ayam Negeri 1kg', sku: 'TLR-001', barcode: '899123456004', cat: 'sembako', cost: 26000, sell: 30000, stock: 12, unit: 'kg', min_stock: 4 },
+      { name: 'Telur Ayam Kampung 1 Pack (10 butir)', sku: 'TLR-002', barcode: '899123456018', cat: 'sembako', cost: 24000, sell: 28000, stock: 15, unit: 'pack', min_stock: 4 },
       { name: 'Tepung Segitiga Biru 1kg', sku: 'TPG-001', barcode: '899123456005', cat: 'sembako', cost: 11000, sell: 13000, stock: 18, unit: 'bks', min_stock: 5 },
+      { name: 'Tepung Terigu Cakra Kembar 1kg', sku: 'TPG-002', barcode: '899123456019', cat: 'sembako', cost: 12000, sell: 14000, stock: 25, unit: 'bks', min_stock: 5 },
+      { name: 'Tepung Beras Rose Brand 500g', sku: 'TPG-003', barcode: '899123456020', cat: 'sembako', cost: 6800, sell: 8500, stock: 30, unit: 'bks', min_stock: 8 },
+      { name: 'Tepung Tapioka Cap Orang Tani 500g', sku: 'TPG-004', barcode: '899123456021', cat: 'sembako', cost: 7200, sell: 9000, stock: 20, unit: 'bks', min_stock: 5 },
+      { name: 'Garam Beryodium Cap Kapal 250g', sku: 'GRM-001', barcode: '899123456022', cat: 'sembako', cost: 2500, sell: 3500, stock: 50, unit: 'bks', min_stock: 15 },
+      { name: 'Margarin Blue Band Serbaguna 200g', sku: 'MRG-001', barcode: '899123456023', cat: 'sembako', cost: 9000, sell: 11000, stock: 40, unit: 'sachet', min_stock: 10 },
+      { name: 'Susu Kental Manis Frisian Flag Cokelat 370g', sku: 'SKM-001', barcode: '899123456024', cat: 'sembako', cost: 11200, sell: 13500, stock: 24, unit: 'kaleng', min_stock: 6 },
+      { name: 'Susu Kental Manis Indomilk Putih 370g', sku: 'SKM-002', barcode: '899123456025', cat: 'sembako', cost: 11000, sell: 13000, stock: 24, unit: 'kaleng', min_stock: 6 },
+      { name: 'Santan Kelapa Kara 65ml', sku: 'STN-001', barcode: '899123456026', cat: 'sembako', cost: 3000, sell: 3800, stock: 60, unit: 'pcs', min_stock: 15 },
+      { name: 'Bawang Merah Brebes 500g', sku: 'BWG-001', barcode: '899123456027', cat: 'sembako', cost: 18000, sell: 22000, stock: 15, unit: 'kantong', min_stock: 5 },
+      { name: 'Bawang Putih Kating 500g', sku: 'BWG-002', barcode: '899123456028', cat: 'sembako', cost: 20000, sell: 24000, stock: 15, unit: 'kantong', min_stock: 5 },
 
       // Makanan & Snack
       { name: 'Indomie Goreng Spesial', sku: 'MIE-001', barcode: '899886620022', cat: 'makanan-snack', cost: 3000, sell: 3500, stock: 85, unit: 'bks', min_stock: 15 },

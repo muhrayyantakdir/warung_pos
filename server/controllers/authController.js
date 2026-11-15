@@ -1,50 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { supabase, isSupabaseConfigured, db, query } from '../database/supabase.js';
+import { supabase, isSupabaseConfigured, isSupabaseAlive, db, query } from '../database/supabase.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'warung_pos_super_secret_jwt_key_2026_id';
-
-// ─── Helper: cek apakah Supabase benar-benar bisa diakses ─────────────────────
-// Timeout 3 detik untuk mencegah hang saat DNS tidak resolve
-let _supabaseAlive = null;        // null = belum diketahui, true/false = hasil test
-let _supabaseLastCheck = 0;
-
-async function isSupabaseAlive() {
-  if (!isSupabaseConfigured || !supabase) return false;
-
-  // Cache hasil selama 60 detik agar tidak test setiap request
-  const now = Date.now();
-  if (_supabaseAlive !== null && now - _supabaseLastCheck < 60_000) {
-    return _supabaseAlive;
-  }
-
-  try {
-    // Batas waktu 3 detik agar tidak menghang terlalu lama saat DNS gagal
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Supabase check timeout (3s)')), 3000)
-    );
-    const checkPromise = supabase.from('users').select('id').limit(1);
-
-    const { error } = await Promise.race([checkPromise, timeoutPromise]);
-
-    _supabaseAlive = !error;
-    _supabaseLastCheck = now;
-    if (!_supabaseAlive) {
-      console.warn('[Auth] Supabase tidak dapat dijangkau, fallback ke SQLite:', error?.message);
-    } else {
-      console.log('[Auth] Supabase online ✓');
-    }
-    return _supabaseAlive;
-  } catch (err) {
-    _supabaseAlive = false;
-    _supabaseLastCheck = now;
-    console.warn('[Auth] Supabase check gagal, fallback ke SQLite:', err?.message);
-    return false;
-  }
-}
 
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
 export const register = async (req, res) => {
