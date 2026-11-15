@@ -93,8 +93,15 @@ export default function ProductModal({
 
     try {
       setSaving(true);
+
+      // SKU otomatis dibuatkan di latar belakang tanpa membebani input pengguna
+      const autoSku = (product && product.sku)
+        ? product.sku
+        : `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
+
       await onSave({
         ...formData,
+        sku: autoSku,
         category_id: formData.category_id ? Number(formData.category_id) : null,
         cost_price: Number(formData.cost_price),
         selling_price: Number(formData.selling_price),
