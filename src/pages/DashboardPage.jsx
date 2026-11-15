@@ -277,7 +277,7 @@ export default function DashboardPage({ setActivePage }) {
                     <div>
                       <h4 style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>{prod.name}</h4>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        SKU: {prod.sku} • Min: {prod.min_stock_alert} {prod.unit}
+                        Kategori: {prod.category_name || 'Umum'} • Batas Min: {prod.min_stock_alert} {prod.unit}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>

@@ -125,7 +125,7 @@ export default function PosPage() {
               <input
                 type="text"
                 className="search-input-field"
-                placeholder="Scan barcode atau cari nama barang kasir..."
+                placeholder="Cari nama barang di kasir..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
@@ -172,8 +172,8 @@ export default function PosPage() {
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                        {prod.sku}
+                      <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}>
+                        {prod.category_name || 'Umum'}
                       </span>
                       <span className={`badge ${isOutOfStock ? 'badge-danger' : isLowStock ? 'badge-warning' : 'badge-muted'}`} style={{ fontSize: '10px' }}>
                         {prod.stock} {prod.unit}

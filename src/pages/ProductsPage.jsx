@@ -172,7 +172,7 @@ export default function ProductsPage({ setActivePage }) {
           <input
             type="text"
             className="search-input-field"
-            placeholder="Cari nama barang, SKU, atau scan barcode..."
+            placeholder="Cari nama barang..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -262,7 +262,6 @@ export default function ProductsPage({ setActivePage }) {
               <table className="pos-table">
                 <thead>
                   <tr>
-                    <th>SKU & Barcode</th>
                     <th>Nama Produk</th>
                     <th>Kategori</th>
                     <th style={{ textAlign: 'right' }}>Harga Modal</th>
@@ -280,21 +279,9 @@ export default function ProductsPage({ setActivePage }) {
 
                     return (
                       <tr key={p.id}>
-                        {/* SKU */}
-                        <td>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: '12px', color: 'var(--brand-primary)' }}>
-                            {p.sku}
-                          </span>
-                          {p.barcode && (
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              {p.barcode}
-                            </div>
-                          )}
-                        </td>
-
                         {/* Nama Produk */}
                         <td>
-                          <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>
+                          <span style={{ fontWeight: '700', fontSize: '13.5px', color: 'var(--text-main)' }}>
                             {p.name}
                           </span>
                         </td>
@@ -398,7 +385,7 @@ export default function ProductsPage({ setActivePage }) {
                 Apakah Anda yakin ingin menghapus produk <strong>"{deletingProduct.name}"</strong>?
               </p>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                SKU: {deletingProduct.sku} • Stok: {deletingProduct.stock} {deletingProduct.unit}
+                Kategori: {deletingProduct.category_name || 'Umum'} • Stok: {deletingProduct.stock} {deletingProduct.unit}
               </p>
             </div>
             <div className="modal-footer">
