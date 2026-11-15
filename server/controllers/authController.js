@@ -1,134 +1,149 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { db, query } from '../database/index.js';
-import { supabase, isSupabaseConfigured } from '../database/supabase.js';
+import { supabase, isSupabaseConfigured, db, query } from '../database/supabase.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'warung_pos_super_secret_jwt_key_2026_id';
 
-// REGISTER NEW USER / KASIR
+// ─── Helper: cek apakah Supabase benar-benar bisa diakses ─────────────────────
+// Karena URL bisa dikonfigurasi tapi network bisa down, kita test per-request
+let _supabaseAlive = null;        // null = belum diketahui, true/false = hasil test
+let _supabaseLastCheck = 0;
+
+async function isSupabaseAlive() {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  // Cache hasil selama 60 detik agar tidak test setiap request
+  const now = Date.now();
+  if (_supabaseAlive !== null && now - _supabaseLastCheck < 60_000) {
+    return _supabaseAlive;
+  }
+
+  try {
+    const { error } = await supabase.from('users').select('id').limit(1);
+    _supabaseAlive = !error;
+    _supabaseLastCheck = now;
+    if (!_supabaseAlive) {
+      console.warn('[Auth] Supabase tidak dapat dijangkau, fallback ke SQLite:', error?.message);
+    } else {
+      console.log('[Auth] Supabase online ✓');
+    }
+    return _supabaseAlive;
+  } catch {
+    _supabaseAlive = false;
+    _supabaseLastCheck = now;
+    return false;
+  }
+}
+
+// ─── REGISTER ─────────────────────────────────────────────────────────────────
 export const register = async (req, res) => {
   try {
     const { username, password, full_name, role = 'cashier' } = req.body;
 
-    // 1. Validation
-    if (!full_name || !full_name.trim()) {
+    // ── Validasi input ──────────────────────────────────────────────────────
+    if (!full_name || !full_name.trim())
       return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi' });
-    }
-    if (!username || !username.trim()) {
+
+    if (!username || !username.trim())
       return res.status(400).json({ success: false, message: 'Username wajib diisi' });
-    }
 
     const cleanUsername = username.trim().toLowerCase();
-    if (cleanUsername.length < 3) {
-      return res.status(400).json({ success: false, message: 'Username minimal harus 3 karakter' });
-    }
 
-    // Alphanumeric + underscore check
-    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
-      return res.status(400).json({ success: false, message: 'Username hanya boleh memuat huruf, angka, dan underscore (_)' });
-    }
+    if (cleanUsername.length < 3)
+      return res.status(400).json({ success: false, message: 'Username minimal 3 karakter' });
 
-    if (!password || password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Kata sandi minimal harus 6 karakter' });
-    }
+    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername))
+      return res.status(400).json({ success: false, message: 'Username hanya boleh huruf, angka, dan underscore (_)' });
 
-    const assignedRole = role === 'admin' || role === 'owner' ? 'admin' : 'cashier';
+    if (!password || password.length < 6)
+      return res.status(400).json({ success: false, message: 'Kata sandi minimal 6 karakter' });
 
-    // 2. Check for duplicate username in Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      const { data: existingSupa } = await supabase
+    const assignedRole = (role === 'admin' || role === 'owner') ? 'admin' : 'cashier';
+    const cleanFullName = full_name.trim();
+    const passwordHash  = bcrypt.hashSync(password, 10);
+
+    const useSupabase = await isSupabaseAlive();
+
+    if (useSupabase) {
+      // ── Supabase path ─────────────────────────────────────────────────────
+      const { data: existing } = await supabase
         .from('users')
         .select('id')
         .eq('username', cleanUsername)
         .maybeSingle();
 
-      if (existingSupa) {
+      if (existing)
         return res.status(400).json({
           success: false,
-          message: `Username '${cleanUsername}' sudah terdaftar. Silakan pilih username lain atau login.`
+          message: `Username '${cleanUsername}' sudah terdaftar. Silakan pilih username lain.`
         });
-      }
-    }
 
-    // 3. Check for duplicate username in local SQLite
-    const existingLocal = query.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', cleanUsername);
-    if (existingLocal) {
-      return res.status(400).json({
-        success: false,
-        message: `Username '${cleanUsername}' sudah terdaftar. Silakan pilih username lain atau login.`
-      });
-    }
-
-    // 4. Hash password with bcrypt
-    const salt = bcrypt.genSaltSync(10);
-    const passwordHash = bcrypt.hashSync(password, salt);
-
-    let createdUser = null;
-
-    // 5. Insert into Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      const { data: supaUser, error: supaErr } = await supabase
+      const { data: newUser, error } = await supabase
         .from('users')
         .insert({
           username: cleanUsername,
           password_hash: passwordHash,
-          full_name: full_name.trim(),
+          full_name: cleanFullName,
           role: assignedRole,
           is_active: true
         })
-        .select()
+        .select('id, username, full_name, role')
         .single();
 
-      if (supaErr) {
-        console.error('[Supabase Register Error]', supaErr);
-      } else {
-        createdUser = supaUser;
+      if (error) {
+        console.error('[AuthController:register] Supabase insert error:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Gagal menyimpan akun baru. ' + error.message
+        });
       }
-    }
 
-    // Also persist in local SQLite for seamless offline reliability
-    const insertStmt = db.prepare(`
-      INSERT INTO users (username, password_hash, full_name, role, is_active)
-      VALUES (?, ?, ?, ?, 1)
-    `);
-    const insertResult = insertStmt.run(cleanUsername, passwordHash, full_name.trim(), assignedRole);
+      const token = _signToken(newUser);
+      return res.status(201).json({
+        success: true,
+        message: `Pendaftaran berhasil! Selamat datang, ${newUser.full_name}`,
+        user: { id: newUser.id, username: newUser.username, full_name: newUser.full_name, role: newUser.role },
+        token
+      });
 
-    if (!createdUser) {
-      createdUser = query.get(
-        'SELECT id, username, full_name, role, is_active, created_at FROM users WHERE id = ?',
-        insertResult.lastInsertRowid
+    } else {
+      // ── SQLite fallback path ──────────────────────────────────────────────
+      const existing = query.get(
+        'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+        cleanUsername
       );
+
+      if (existing)
+        return res.status(400).json({
+          success: false,
+          message: `Username '${cleanUsername}' sudah terdaftar. Silakan pilih username lain.`
+        });
+
+      const stmt   = db.prepare(
+        'INSERT INTO users (username, password_hash, full_name, role, is_active) VALUES (?, ?, ?, ?, 1)'
+      );
+      const result = stmt.run(cleanUsername, passwordHash, cleanFullName, assignedRole);
+
+      const newUser = query.get(
+        'SELECT id, username, full_name, role FROM users WHERE id = ?',
+        result.lastInsertRowid
+      );
+
+      const token = _signToken(newUser);
+      return res.status(201).json({
+        success: true,
+        message: `Pendaftaran berhasil! Selamat datang, ${newUser.full_name}`,
+        user: { id: newUser.id, username: newUser.username, full_name: newUser.full_name, role: newUser.role },
+        token
+      });
     }
 
-    // 6. Generate JWT Token for immediate login
-    const token = jwt.sign(
-      {
-        id: createdUser.id,
-        username: createdUser.username,
-        role: createdUser.role,
-        full_name: createdUser.full_name
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.status(201).json({
-      success: true,
-      message: `Pendaftaran berhasil! Selamat datang, ${createdUser.full_name}`,
-      user: {
-        id: createdUser.id,
-        username: createdUser.username,
-        full_name: createdUser.full_name,
-        role: createdUser.role
-      },
-      token
-    });
   } catch (error) {
     console.error('[AuthController:register]', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Gagal memproses pendaftaran akun',
       error: error.message
@@ -136,84 +151,78 @@ export const register = async (req, res) => {
   }
 };
 
-// LOGIN
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !username.trim()) {
+    if (!username || !username.trim())
       return res.status(400).json({ success: false, message: 'Username wajib diisi' });
-    }
-    if (!password) {
+    if (!password)
       return res.status(400).json({ success: false, message: 'Kata sandi wajib diisi' });
-    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const useSupabase   = await isSupabaseAlive();
 
     let user = null;
 
-    // 1. If Supabase is configured, check in Supabase first
-    if (isSupabaseConfigured && supabase) {
+    if (useSupabase) {
+      // ── Supabase path ─────────────────────────────────────────────────────
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('username', username.trim().toLowerCase())
+        .eq('username', cleanUsername)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
-        user = data;
+      if (error) {
+        console.error('[AuthController:login] Supabase error:', error);
+        return res.status(500).json({ success: false, message: 'Gagal memproses login', error: error.message });
       }
-    }
-
-    // 2. Fallback to local SQLite database
-    if (!user) {
+      user = data;
+    } else {
+      // ── SQLite fallback ───────────────────────────────────────────────────
       user = query.get(
         'SELECT * FROM users WHERE LOWER(username) = LOWER(?) AND is_active = 1',
-        username.trim()
+        cleanUsername
       );
     }
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Username atau kata sandi tidak sesuai'
-      });
-    }
+    if (!user)
+      return res.status(401).json({ success: false, message: 'Username atau kata sandi tidak sesuai' });
 
-    // Verify password (supports bcrypt hash or plain text initial match)
-    let isPasswordMatch = false;
-    if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$')) {
-      isPasswordMatch = bcrypt.compareSync(password, user.password_hash);
+    // ── Verifikasi password ───────────────────────────────────────────────────
+    const hash = user.password_hash || '';
+    let isMatch = false;
+
+    if (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$')) {
+      isMatch = bcrypt.compareSync(password, hash);
     } else {
-      isPasswordMatch = (password === user.password_hash);
-    }
-
-    // Also support default demo password matches if plain comparison matches
-    if (!isPasswordMatch && (password === 'admin123' || password === 'kasir123')) {
-      if (user.username === 'admin' || user.username === 'kasir1') {
-        isPasswordMatch = true;
+      // Plain text (akun seed awal sebelum di-hash)
+      isMatch = (password === hash);
+      // Jika cocok, upgrade ke bcrypt hash
+      if (isMatch) {
+        const newHash = bcrypt.hashSync(password, 10);
+        try {
+          if (useSupabase) {
+            await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id);
+          } else {
+            db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+          }
+          console.log(`[Auth] Password di-upgrade ke bcrypt untuk user: ${user.username}`);
+        } catch (upgradeErr) {
+          // Non-fatal
+          console.warn('[Auth] Gagal upgrade hash:', upgradeErr.message);
+        }
       }
     }
 
-    if (!isPasswordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Username atau kata sandi tidak sesuai'
-      });
-    }
+    if (!isMatch)
+      return res.status(401).json({ success: false, message: 'Username atau kata sandi tidak sesuai' });
 
-    // Generate JWT token (valid for 7 days)
-    const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        full_name: user.full_name
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = _signToken(user);
 
-    res.json({
+    return res.json({
       success: true,
       message: `Selamat datang, ${user.full_name}!`,
       user: {
@@ -224,35 +233,35 @@ export const login = async (req, res) => {
       },
       token
     });
+
   } catch (error) {
     console.error('[AuthController:login]', error);
-    res.status(500).json({
-      success: false,
-      message: 'Gagal memproses login',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: 'Gagal memproses login', error: error.message });
   }
 };
 
-// GET CURRENT LOGGED IN USER
+// ─── GET ME ───────────────────────────────────────────────────────────────────
 export const getMe = (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Belum login' });
-    }
-    res.json({
-      success: true,
-      user: req.user
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  if (!req.user)
+    return res.status(401).json({ success: false, message: 'Belum login' });
+  return res.json({ success: true, user: req.user });
 };
 
-// LOGOUT
+// ─── LOGOUT ───────────────────────────────────────────────────────────────────
 export const logout = (req, res) => {
-  res.json({
-    success: true,
-    message: 'Berhasil keluar dari sistem'
-  });
+  return res.json({ success: true, message: 'Berhasil keluar dari sistem' });
 };
+
+// ─── Internal helper ──────────────────────────────────────────────────────────
+function _signToken(user) {
+  return jwt.sign(
+    {
+      id:        user.id,
+      username:  user.username,
+      role:      user.role,
+      full_name: user.full_name
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
