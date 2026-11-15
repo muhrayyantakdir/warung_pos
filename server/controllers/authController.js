@@ -8,7 +8,7 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'warung_pos_super_secret_jwt_key_2026_id';
 
 // ─── Helper: cek apakah Supabase benar-benar bisa diakses ─────────────────────
-// Karena URL bisa dikonfigurasi tapi network bisa down, kita test per-request
+// Timeout 3 detik untuk mencegah hang saat DNS tidak resolve
 let _supabaseAlive = null;        // null = belum diketahui, true/false = hasil test
 let _supabaseLastCheck = 0;
 
@@ -22,7 +22,14 @@ async function isSupabaseAlive() {
   }
 
   try {
-    const { error } = await supabase.from('users').select('id').limit(1);
+    // Batas waktu 3 detik agar tidak menghang terlalu lama saat DNS gagal
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase check timeout (3s)')), 3000)
+    );
+    const checkPromise = supabase.from('users').select('id').limit(1);
+
+    const { error } = await Promise.race([checkPromise, timeoutPromise]);
+
     _supabaseAlive = !error;
     _supabaseLastCheck = now;
     if (!_supabaseAlive) {
@@ -31,9 +38,10 @@ async function isSupabaseAlive() {
       console.log('[Auth] Supabase online ✓');
     }
     return _supabaseAlive;
-  } catch {
+  } catch (err) {
     _supabaseAlive = false;
     _supabaseLastCheck = now;
+    console.warn('[Auth] Supabase check gagal, fallback ke SQLite:', err?.message);
     return false;
   }
 }
